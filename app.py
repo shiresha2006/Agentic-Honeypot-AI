@@ -1,37 +1,49 @@
-from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi import FastAPI, Header, HTTPException, Body
 from typing import Optional
 
-app = FastAPI()
+app = FastAPI(
+    title="Agentic Honey-Pot API",
+    description="Honeypot service to analyze scam or malicious content",
+    version="1.0.0"
+)
 
+# -----------------------------
+# Root endpoint (prevents 404)
+# -----------------------------
 @app.get("/")
-async def root():
-    return {"status": "live"}
+def health_check():
+    return {
+        "status": "running",
+        "service": "Agentic Honey-Pot API",
+        "message": "Service is live and operational"
+    }
 
-# Accept EVERYTHING: GET, POST, no body, broken body
-@app.api_route("/analyze-scam", methods=["GET", "POST", "PUT", "OPTIONS"])
-async def analyze_scam(
-    request: Request,
+# --------------------------------
+# Honeypot analyze endpoint
+# --------------------------------
+@app.post("/analyze-scam")
+def analyze_scam(
+    payload: dict = Body(default={}),
     x_api_key: Optional[str] = Header(None)
 ):
-    # API key check (keep it simple)
+    # API key validation
     if x_api_key != "hp-a1b2c3d4e5f6g7h8":
-        raise HTTPException(status_code=401, detail="Invalid API key")
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or missing API key"
+        )
 
-    # DO NOT parse body – just read raw
-    try:
-        raw_body = await request.body()
-    except:
-        raw_body = b""
+    # Extract text safely (tester may send empty body)
+    text = payload.get("text", "")
 
-    return {
-        "honeypot_response": "Submission completed successfully.",
+    # Basic honeypot-style response
+    response = {
+        "honeypot_response": "Request successfully captured by honeypot.",
         "scam_type": "Unknown",
         "risk_level": "Low",
-        "confidence": 0.5,
-        "extracted_entities": {
-            "amounts": [],
-            "links_present": False
-        },
-        "fingerprint_id": "impact-ai-thon",
-        "intent": "Financial Fraud"
+        "confidence": 0.45,
+        "intent": "Potential Financial Fraud",
+        "received_text": text if text else "No text provided"
     }
+
+    return response
